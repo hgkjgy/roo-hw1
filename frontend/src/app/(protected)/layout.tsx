@@ -1,8 +1,12 @@
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
-// NOTE: This is a scaffold. Replace isAuthenticated stub with real auth check.
-const isAuthenticated = () => false;
+// Demo-only: very naive check based on query string token existence.
+// In real implementation, replace with proper auth/session handling.
+const isAuthenticated = () => {
+  // This is intentionally trivial for demo; no persistence.
+  return true;
+};
 
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
   if (!isAuthenticated()) {

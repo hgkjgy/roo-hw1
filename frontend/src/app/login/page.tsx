@@ -10,15 +10,27 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    // TODO: integrate with backend /api/v1/auth/login
-    setTimeout(() => {
+    try {
+      const resp = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!resp.ok) {
+        const msg = await resp.text();
+        throw new Error(msg || "Login failed");
+      }
+      // Demo-only: not persisting token, just redirect.
+      router.replace("/dashboard?email=" + encodeURIComponent(email));
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+    } finally {
       setIsSubmitting(false);
-      router.replace("/");
-    }, 400);
+    }
   };
 
   return (
@@ -63,7 +75,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-4 text-xs text-gray-500">
-          This is a scaffold. Hook up API calls and token handling later.
+          Demo-only scaffold: no real authentication/session persistence. Tokens are not stored.
         </p>
       </div>
     </main>
