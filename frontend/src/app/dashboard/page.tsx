@@ -41,6 +41,14 @@ function roleLabel(role: Role) {
   }[role];
 }
 
+function statusLabel(status: TaskStatus) {
+  return {
+    todo: "To do",
+    in_progress: "In progress",
+    done: "Done",
+  }[status];
+}
+
 function SummaryChips({ tasks }: { tasks: Task[] }) {
   const total = tasks.length;
   const done = tasks.filter((t) => t.status === "done").length;
@@ -56,32 +64,94 @@ function SummaryChips({ tasks }: { tasks: Task[] }) {
   );
 }
 
+function StatusPill({ status }: { status: TaskStatus }) {
+  const cls =
+    status === "done"
+      ? "bg-green-100 text-green-800"
+      : status === "in_progress"
+        ? "bg-blue-100 text-blue-800"
+        : "bg-amber-100 text-amber-800";
+  return <span className={`rounded px-2 py-1 text-xs ${cls}`}>{statusLabel(status)}</span>;
+}
+
+function TaskRow({ task }: { task: Task }) {
+  return (
+    <div className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+      <div>
+        <p className="font-medium">{task.title}</p>
+        <p className="text-xs text-gray-500">Assignee: {task.assignee}</p>
+      </div>
+      <div className="flex items-center gap-2 text-xs">
+        <span className="rounded bg-slate-100 px-2 py-1">{task.priority}</span>
+        <StatusPill status={task.status} />
+      </div>
+    </div>
+  );
+}
+
 function TaskList({ tasks }: { tasks: Task[] }) {
   return (
     <div className="space-y-2">
       {tasks.map((task) => (
-        <div key={task.id} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
-          <div>
-            <p className="font-medium">{task.title}</p>
-            <p className="text-xs text-gray-500">Assignee: {task.assignee}</p>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="rounded bg-slate-100 px-2 py-1">{task.priority}</span>
-            <span
-              className={
-                "rounded px-2 py-1 " +
-                (task.status === "done"
-                  ? "bg-green-100 text-green-800"
-                  : task.status === "in_progress"
-                    ? "bg-blue-100 text-blue-800"
-                    : "bg-amber-100 text-amber-800")
-              }
-            >
-              {task.status}
-            </span>
-          </div>
-        </div>
+        <TaskRow key={task.id} task={task} />
       ))}
+    </div>
+  );
+}
+
+function EmployeeTasks({ tasks, onChange }: { tasks: Task[]; onChange: (tasks: Task[]) => void }) {
+  const myTasks = tasks.filter((t) => t.assignee.toLowerCase() === "employee@test.com");
+
+  const updateStatus = (id: string, status: TaskStatus) => {
+    onChange(tasks.map((t) => (t.id === id ? { ...t, status } : t)));
+  };
+
+  const total = myTasks.length;
+  const completed = myTasks.filter((t) => t.status === "done").length;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold">My Tasks</p>
+          <p className="text-xs text-gray-500">Employee view — local state only</p>
+        </div>
+        <div className="text-xs text-gray-700">Total: {total} · Completed: {completed}</div>
+      </div>
+
+      <div className="space-y-2">
+        {myTasks.map((task) => (
+          <div key={task.id} className="rounded border p-3 text-sm space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{task.title}</p>
+                <p className="text-xs text-gray-500">Priority: {task.priority}</p>
+              </div>
+              <StatusPill status={task.status} />
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <button
+                className={`rounded border px-2 py-1 ${task.status === "todo" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
+                onClick={() => updateStatus(task.id, "todo")}
+              >
+                Mark To do
+              </button>
+              <button
+                className={`rounded border px-2 py-1 ${task.status === "in_progress" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
+                onClick={() => updateStatus(task.id, "in_progress")}
+              >
+                Mark In progress
+              </button>
+              <button
+                className={`rounded border px-2 py-1 ${task.status === "done" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
+                onClick={() => updateStatus(task.id, "done")}
+              >
+                Mark Done
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -93,8 +163,7 @@ export default function DashboardPage({
 }) {
   const email = (searchParams?.email || "demo@test.com").trim();
   const role = useMemo<Role>(() => deriveRole(email), [email]);
-
-  const [tasks] = useState<Task[]>(seedTasks);
+  const [tasks, setTasks] = useState<Task[]>(seedTasks);
 
   return (
     <main className="min-h-screen bg-gray-50 flex justify-center px-4 py-10">
@@ -123,11 +192,17 @@ export default function DashboardPage({
 
         <section className="rounded border bg-white p-4 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold">Seeded tasks (read-only for now)</p>
-            <p className="text-xs text-gray-500">Commit 1 scaffold</p>
+            <p className="text-sm font-semibold">Seeded tasks</p>
+            <p className="text-xs text-gray-500">Commit 2: employee actions</p>
           </div>
           <TaskList tasks={tasks} />
         </section>
+
+        {role === "employee" && (
+          <section className="rounded border bg-white p-4 shadow-sm space-y-3">
+            <EmployeeTasks tasks={tasks} onChange={setTasks} />
+          </section>
+        )}
       </div>
     </main>
   );
