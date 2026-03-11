@@ -1,481 +1,308 @@
 # PROMPT.md
 
-## Project Scope
-本文件記錄我在本專案中使用 Roo Code 進行 orchestration 的 prompt 設計、調整過程與成效分析。
+## 一、專案說明
+本專案的目標不是單純讓 AI 一次性產生程式碼，而是透過 Roo Code 的 orchestration 模式，將一個較複雜的系統需求拆解成多個階段，逐步完成規劃、實作、修正與收尾。
 
-本專案主題為 **AI-driven internal task collaboration platform**。  
-本階段以 **Stage 1** 為主，聚焦於以下範圍：
+題目是 **AI-driven internal task collaboration and document processing platform**。  
+在完整設計上，這個系統包含前端、後端 API、資料庫、背景任務、AI pipeline、通知模組、管理與稽核功能，因此合理需要 orchestration 模式，而不是用單一 prompt 一次完成。
 
-- Backend baseline for `Auth`, `RBAC`, `Users`
-- `JWT` / `refresh token` structure
-- `audit masking` foundation
-- `health check`
-- `env validation`
-- Frontend `login` scaffold
-- Basic protected route scaffold
-- `docker-compose` baseline
-- `.env.example`
-- `PROMPT.md` / `DESIGN.md`
+不過，本次實際提交的成果並不是整套系統全部完成，而是先聚焦在 **frontend demo dashboard**，完成可展示、可驗證、可追蹤的階段成果，包括：
 
-以下功能明確不納入 Stage 1：
-
-- `Task`
-- `Document`
-- `AI pipeline`
-- `Notification`
-- `Admin dashboard`
-- Any Stage 2+ feature
+- demo login
+- role-aware dashboard
+- employee / manager / admin 三種角色視圖
+- mock auth localStorage persistence
+- task localStorage persistence
+- manager/admin 任務新增與狀態控制
+- employee 任務狀態切換
+- reset flow
+- form validation
+- empty states
+- README/demo usage 說明
+- Next.js 16 相容修正（searchParams、hook order、localStorage hydration）
 
 ---
 
-## Prompt Design Principles
-我在這次作業中採用以下 prompt 設計原則：
+## 二、為什麼這個專案需要 Orchestration 模式
+這個專案不是單一頁面或單一功能，而是包含多個模組與階段的系統型專案。  
+從設計文件來看，完整系統原本規劃包含：
 
-1. **先規劃，後實作**
-   - 不讓 Roo Code 一開始就直接產生完整專案
-   - 先要求提出架構、模組切分、分階段規劃
+- Frontend（Next.js App Router）
+- Backend API（NestJS modular monolith）
+- PostgreSQL
+- Redis / BullMQ worker
+- Task module
+- Document processing
+- AI summarize / tagging pipeline
+- Notification module
+- Audit / Admin module
+- Docker Compose / deployment baseline
 
-2. **明確限制範圍**
-   - 每一輪 prompt 都限制只能完成某個 stage 或某些模組
-   - 避免 AI 一次做到超出作業要求的內容
+如果直接使用單一 prompt 要求「幫我生成整個系統」，很容易出現以下問題：
 
-3. **要求 orchestration**
-   - 要求 Roo Code 先拆子任務、安排順序、分角色
-   - 強調這是多步驟、跨模組、需要協作的工程型專案
+1. 範圍失控，AI 會直接往完整產品擴張  
+2. 模組混雜，前後端與文件同時生成，難以追蹤  
+3. 不容易保留清楚的 commit 歷史  
+4. 很難控制 Roo Code 的產出方向  
+5. 難以分析哪些 prompt 有效、哪些 prompt 導致 drift  
 
-4. **保留可追蹤性**
-   - 要求每個階段完成後回報實際修改檔案
-   - 要求提供建議 commit message
-   - 方便保留階段性紀錄與 Git 歷史
-
-5. **控制 AI drift**
-   - 當 Roo Code開始偏離範圍時，重新下 prompt 把範圍收回 Stage 1
-   - 避免它提早做到 Stage 2 之後的功能
-
----
-
-## Orchestration Role Design
-本專案中，我希望 Roo Code 扮演的不只是單一 coder，而是多角色協作系統，包含：
-
-- **Planner**
-  - 負責拆解任務、安排階段、定義順序
-
-- **Architect**
-  - 負責系統架構、模組邊界、資料流與控制流規劃
-
-- **Coder**
-  - 根據規劃建立 scaffold、模組骨架與基礎結構
-
-- **Reviewer**
-  - 回報已修改檔案、已完成範圍與尚未完成項目
-
-- **Tool Runner**
-  - 執行 CLI、安裝套件、建立 scaffold、進行 build 驗證
+因此，我在這次作業中採用 orchestration 的方式，先要求 Roo Code 做規劃、拆階段、限制範圍，再逐步推進。
 
 ---
 
-## Key Prompts and Analysis
+## 三、Prompt 設計原則
+這次使用 Roo Code 時，我主要採用以下幾個 prompt 設計原則：
 
-### 1. Initial Planning Prompt
-#### Prompt
-> You are acting as a system architect, project manager, and AI engineering team.  
-> I need to build a complex software project for an assignment. The goal is not to generate everything in one step, but to use orchestration-style planning, task decomposition, staged execution, and self-review.  
-> Your job now is NOT to write code yet.  
-> First, do the following:
-> 1. Propose 3 project ideas that are complex enough to reasonably require orchestration mode.
-> 2. For each idea, list:
->    - target users
->    - core problem it solves
->    - major modules
->    - backend/API/database/background task needs
->    - why it cannot be completed well in a single prompt
-> 3. Recommend the best one for this assignment.
-> 4. After that, provide:
->    - system architecture
->    - module breakdown
->    - orchestration roles (planner, coder, reviewer, tool runner, tester)
->    - staged implementation plan
->    - expected repository structure
-> Do not write implementation code yet.
-> Wait for my approval before starting stage 1.
+### 1. 先規劃，後實作
+我沒有一開始就要求 Roo Code 直接寫完整專案，而是先要求它先提出架構、模組邊界、階段切分與交付方式。  
+這樣做的好處是可以先建立系統全貌，再決定每一輪應該推進到哪個程度。
 
-#### Purpose
-這個 prompt 的目的是讓 Roo Code 先進入「規劃模式」，而不是直接開始產生程式碼。
+### 2. 明確限制範圍
+在多次 prompt 中都強調：
+- 只做目前這一階段
+- 不要提前開始下一階段
+- 不要自行擴張成完整產品
 
-#### Expected Behavior
-我預期 Roo Code 先提出多個複雜專案方向，並解釋為什麼需要 orchestration，再進一步提供系統設計與執行計畫。
+這種限制型 prompt 很重要，因為 Roo Code 在面對大型專案時，會有自然往「更多功能」擴張的傾向。
 
-#### Actual Response
-Roo Code 確實先提出可行方向，最後我選擇了 **AI-driven internal task collaboration platform**，並開始形成多模組架構與 staged plan。
+### 3. 要求拆子任務與回報
+要求 Roo Code：
+- 先拆子任務
+- 說明執行順序
+- 完成後列出修改檔案
+- 提供建議 commit message
 
-#### Adjustment / Reflection
-這個 prompt 效果很好，因為它成功避免了 AI 一開始直接「整包生成專案」的情況。  
-這一輪 prompt 對整體品質提升最明顯。
+這讓整個過程更像工程協作，而不是一次性輸出。
+
+### 4. 持續糾偏
+當 Roo Code 產出的方向和我預期不一致時，不會直接修改程式碼，而是重新設計 prompt，把它拉回指定範圍。 (作業規定)
 
 ---
 
-### 2. Scope Definition Prompt
-#### Prompt
-> 請用中文和我溝通，但所有程式碼、檔名、資料夾名稱、API 路由、資料表名稱、commit message 一律使用英文。  
-> 我想做一個「AI 驅動的內部任務協作與文件處理平台」……  
-> 請先不要寫程式碼。  
-> 先完成以下工作：
-> 1. 判斷這個專案為什麼合理需要 orchestration 模式
-> 2. 拆解成多個子任務與多個 agent 角色
-> 3. 規劃執行順序與里程碑
-> 4. 提出推薦的 repo 結構
-> 5. 產出一份可直接放入 DESIGN.md 的系統設計草稿  
-> 等我確認後，再開始 stage 1。
+## 四、Orchestration 的角色設計
+在這次作業中，我望 Roo Code 同時扮演以下幾種角色：
 
-#### Purpose
-這個 prompt 的目的是：
-- 明確指定專案主題
-- 要求以中文溝通
-- 但保留英文工程命名
-- 先產出 `DESIGN.md` 級別的設計內容
+### 1. Planner
+負責先把整個專案拆成多個階段，安排優先順序與依賴關係。
 
-#### Expected Behavior
-我預期 Roo Code 針對指定主題產出可交作業的架構草稿，而不是只給非常簡略的想法。
+### 2. Architect
+負責提出系統架構、模組邊界、資料流與控制流。
 
-#### Actual Response
-Roo Code 成功提出模組、分階段執行計畫、資料流方向與 repo 結構，後續成為 `DESIGN.md` 的基礎。
+### 3. Coder
+負責依照目前階段的限制實作對應功能。
 
-#### Adjustment / Reflection
-這個 prompt 很重要，因為它把語言規範和工程命名規範一起固定下來，避免後續輸出混亂。
+### 4. Reviewer
+負責檢查目前產出是否偏離原本要求，並說明哪些地方仍屬於 placeholder。
+
+### 5. Tool Runner
+負責透過 repo 掃描、讀檔、執行指令、檢查錯誤訊息等方式協助完成多步驟任務。
+
+這樣的角色分工，能讓 Roo Code 不只是「寫 code」，而是更接近一個可被管理的 AI 工程團隊。
 
 ---
 
-### 3. Stage 1 Constraint Prompt
-#### Prompt
-> 請開始 Stage 1。  
-> 但請嚴格限制範圍，只實作以下內容：
-> 1. backend:
->    - Auth module baseline
->    - RBAC baseline
->    - User module baseline
->    - audit masking foundation
->    - health check endpoint
->    - env validation baseline
-> 2. frontend:
->    - login page scaffold only
->    - basic auth-related routing scaffold only
-> 3. infrastructure:
->    - docker-compose baseline only  
-> 請遵守以下規則：
-> - 只做 Stage 1，不要提前實作 Task、Document、AI pipeline、Notification、Admin dashboard。
-> - 所有檔名、資料夾名稱、模組名稱、API routes、commit messages 使用英文。
-> - 先建立最小可運作骨架，不要過度擴張功能。
-> - 完成後請先回報：
->   1. 新增或修改的檔案
->   2. Stage 1 完成範圍
->   3. 尚未開始的模組
->   4. 建議的 commit message
+## 五、關鍵 Prompt 節錄與分析
 
-#### Purpose
-這個 prompt 的目的是把開發範圍鎖死在 Stage 1，防止 Roo Code提早擴張到後續功能。
+下面列出這次作業中幾個最重要的 prompt 類型，說明其目的、預期、實際效果與修正方式。
 
-#### Expected Behavior
-我預期 Roo Code 只建立骨架與基礎模組，不做完整業務邏輯。
+### Prompt 1：初始規劃 Prompt
+#### Prompt 目的
+要求 Roo Code 不要一開始直接生成整包專案，而是先完成架構規劃、模組切分、階段設計與文件骨架。
 
-#### Actual Response
-Roo Code 大致遵守了 Stage 1 範圍，先完成 backend scaffold，再逐步補 frontend login、infrastructure、`PROMPT.md`。
+#### 我的預期
+希望 Roo Code 先產出：
+- 系統架構方向
+- 模組邊界
+- stage plan
+- `DESIGN.md` 初始版本
+- 基本 repo scaffold
 
-#### Adjustment / Reflection
-這一類限制型 prompt 非常重要。若沒有這段，Roo Code 有明顯傾向往更完整功能擴張。
+#### Roo Code 實際回應
+Roo Code 有先從系統角度切分 frontend、backend、worker、queue、database、docs 等模組，也建立了 `DESIGN.md` 與 `stage-plan.md` 這類規劃型文件。
+
+#### 反思
+這一步非常重要。  
+如果沒有先做規劃，後面的 prompt 很容易失去依據，也比較難證明這個專案「合理需要 orchestration」。
 
 ---
 
-### 4. Correction Prompt for Drift Control
-#### Prompt
-> 可以繼續，但請嚴格限制範圍。  
-> 安裝 TypeORM/PostgreSQL 相關依賴可以接受，因為這屬於 backend baseline。  
-> 但目前 Stage 1 只允許做到：
-> - backend auth/rbac/users baseline
-> - jwt/refresh structure
-> - password hashing baseline
-> - guard/strategy skeleton
-> - audit masking improvement
-> - frontend login scaffold
-> - basic auth-related route guard scaffold
-> - infrastructure baseline
-> - PROMPT.md initial structure  
-> 請不要開始實作：
-> - Task
-> - Document
-> - AI pipeline
-> - Notification
-> - Admin dashboard
-> - 完整資料表設計與複雜業務流程
+### Prompt 2：Stage 1 限制型 Prompt
+#### Prompt 目的
+把 Roo Code 的工作範圍限制在 Stage 1，只允許完成最小可運作骨架，不要提前做 Task、Document、AI pipeline、Notification、Admin dashboard。
 
-#### Purpose
-這個 prompt 用來修正 Roo Code 開始往更完整 DB / 業務流程延伸的傾向。
-
-#### Expected Behavior
-我希望 Roo Code 可以保留必要的 package / baseline，但不要直接把複雜商業邏輯一起做掉。
-
-#### Actual Response
-Roo Code 後續有把焦點拉回 Stage 1，並在回報中多次強調沒有觸及 Task、Document、AI pipeline 等模組。
-
-#### Adjustment / Reflection
-這是典型的「糾偏 prompt」。  
-如果沒有這種 prompt，AI 很容易在看到資料庫或 ORM 之後一路往更完整產品開發。
-
----
-
-### 5. Finalization Prompt for Stage 1
-#### Prompt
-> 確認，請繼續完成本輪剩餘的 Stage 1，並嚴格限制在既定範圍內。  
-> 本輪請完成：
-> 1. frontend
->    - basic auth-related route guard scaffold only
-> 2. infrastructure
->    - docker-compose baseline
->    - .env.example baseline
-> 3. repository documents
->    - PROMPT.md initial structure
-> 4. verification
->    - basic build/run validation for frontend and backend  
-> 請不要實作：
-> - Task
-> - Document
-> - AI pipeline
-> - Notification
-> - Admin dashboard
-> - 真實 API 串接
-> - Stage 2 之後的任何功能  
-> 完成後請一次回報：
-> 1. 實際新增或修改的檔案
-> 2. Stage 1 最終完成範圍
-> 3. 尚未開始的模組
-> 4. 建議的 commit message
-
-#### Purpose
-這個 prompt 的目的是在 Stage 1 尾聲做收斂，把前端、infrastructure 和文件補齊，並要求 build 驗證。
-
-#### Expected Behavior
-我預期 Roo Code 完成剩餘骨架並停止在 Stage 1，不往後擴張。
-
-#### Actual Response
-Roo Code 最後完成了：
+#### 我的預期
+預期 Roo Code 只完成：
+- auth/rbac/users baseline
 - frontend login scaffold
-- protected route scaffold
-- `docker-compose.yml`
-- `.env.example`
-- `PROMPT.md`
-- backend/frontend build 驗證
-
-#### Adjustment / Reflection
-這類「收尾型 prompt」有助於把分散的工作整合成一個明確階段成果。
-
----
-
-## Prompt Effectiveness Review
-
-### Which prompts clearly improved quality?
-以下 prompt 對品質提升最明顯：
-
-1. **Initial Planning Prompt**
-   - 避免一開始就變成單步驟生專案
-   - 讓整體流程先規劃再實作
-
-2. **Stage 1 Constraint Prompt**
-   - 有效限制範圍
-   - 防止 Roo Code 過度擴張
-
-3. **Correction Prompt for Drift Control**
-   - 在 AI 開始偏移時重新拉回指定範圍
-   - 對維持作業要求特別重要
-
-### Which prompts were less effective or caused drift?
-比較容易造成 drift 的情況不是單一 prompt 本身，而是：
-- 如果 prompt 太短，只寫「繼續完成」
-- 或沒有明講「不要做 Stage 2+」
-- Roo Code 就可能自動往更完整產品方向擴張
-
-### Did orchestration actually help?
-有幫助。  
-如果不用 orchestration，而是直接要求「寫一個完整系統」，很容易出現以下問題：
-
-- 一次產生太多內容，難以控制範圍
-- 無法保留清楚的階段性 commit
-- 容易漏掉 `DESIGN.md` / `PROMPT.md` 這種作業要求文件
-- 跨模組協作順序會混亂
-- 更難分析哪些 prompt 有效、哪些 prompt 需要修正
-
-### What would fail without orchestration?
-如果不用 orchestration，最可能卡住的地方有：
-
-1. **模組拆分不清楚**
-   - Backend、frontend、infrastructure、docs 可能混在一起產生
-
-2. **範圍失控**
-   - AI 會傾向直接補齊更多業務邏輯，而不是只做 Stage 1
-
-3. **文件不足**
-   - 很可能只生成 code，卻沒有設計文件與 prompt 分析
-
-4. **缺乏可追蹤性**
-   - 難以形成清楚的 commit 歷史與階段成果
-
----
-
-## Safety and Masking Notes
-在 prompt 中，我持續強調：
-- 不要洩漏 secrets
-- 所有敏感資訊要做 masking
-- `audit log` 不能直接保留明文 `password`、`token`、`secret`
-- `.env.example` 只能放範例值，不能提交真實敏感資訊
-
-這些限制有幫助 Roo Code 在 Stage 1 中建立較安全的 baseline。
-
----
-
-## Current Stage Summary
-目前本專案已完成 **Stage 1 baseline**，包含：
-
-- Backend auth/rbac/users scaffolds
-- JWT / refresh structure
-- health check
-- env validation
-- audit masking baseline
-- frontend login scaffold
-- protected route scaffold
+- basic protected route scaffold
 - docker-compose baseline
 - `.env.example`
-- `PROMPT.md`
+- 基本文件
 
-尚未開始的內容：
-- `Task`
-- `Document`
-- `AI pipeline`
-- `Notification`
-- `Admin dashboard`
-- Any Stage 2+ implementation
+#### Roo Code 實際回應
+Roo Code 大致遵守了這個限制，先完成骨架性內容，而沒有一開始就把全部業務邏輯都做出來。
 
+#### 反思
+這類限制型 prompt 對控制範圍非常有效。  
+如果沒有這種 prompt，Roo Code 很容易直接往更完整產品擴張。
 
 ---
 
-## 骨架建立好了，建立可以demo的prompt
-請在目前專案中實作一個 Stage 1 / demo-only login refinement，採用「不同測試帳號代表不同角色」的方式，不要在登入畫面手動選角色。
+### Prompt 3：糾偏 Prompt（Drift Control）
+#### Prompt 目的
+當 Roo Code 開始往更完整的 DB 或業務流程延伸時，用 prompt 把它拉回目前允許的範圍。
 
-目標：
-讓目前的 login scaffold 變成可展示的 demo login flow。
-使用者只輸入 email 和 password。
-系統根據測試帳號自動判定 role。
+#### 我的預期
+Roo Code 繼續完成目前骨架，但不要：
+- 提前做 Stage 2+
+- 把資料表與完整功能一次補齊
+- 失去當前階段的 focus
 
-Demo accounts:
-- employee@test.com
-- manager@test.com
-- admin@test.com
+#### Roo Code 實際回應
+在重新限制之後，Roo Code 有收斂回比較基礎的 scaffold 與文件補齊。
 
-Demo password:
-- demo1234
+#### 反思
+這種 prompt 讓我很明顯感受到 orchestration 的價值。  
+AI 並不是下完 prompt 就永遠不會偏，而是需要持續管理、修正與界定範圍。
 
-限制：
-1. 這是 demo-only behavior，不是真實正式驗證系統。
-2. 不要加入真正完整的 session system。
-3. 不要加入 Stage 2 之後的模組。
-4. 保持在目前小應用 / Stage 1 demo 範圍內。
-5. 不要在 login page 加入角色選單。
-6. 角色必須由 email 自動決定，而不是前端手動選擇。
+---
 
-Backend requirements:
-1. 在現有 auth/users baseline 上加入 demo login behavior。
-2. 當 email 為 employee@test.com、manager@test.com、admin@test.com，且 password 為 demo1234 時，允許登入。
-3. 若帳號或密碼不符，回傳適當錯誤。
-4. role 對應如下：
-   - employee@test.com -> employee
-   - manager@test.com -> manager
-   - admin@test.com -> admin
-5. 這個 demo login 可以使用 in-memory mapping 或最小 stub，不需要完整正式資料庫流程。
-6. 保留目前 Auth / RBAC / Users 結構，不要大改整體架構。
+### Prompt 4：Demo Dashboard 擴充 Prompt
+#### Prompt 目的
+在 Stage 1 骨架完成後，進一步把前端 demo 做到更能展示的程度，包括：
+- employee view
+- manager/admin controls
+- summary chips
+- demo banner
+- mock auth persistence
+- task persistence
+- reset flow
+- validation
+- empty states
 
-Frontend requirements:
-1. 保持 login page 只有 email/password 輸入，不要加入 role selector。
-2. 送出表單後呼叫目前的 login endpoint。
-3. 登入成功後導向 dashboard placeholder。
-4. 在 dashboard 畫面清楚顯示：
-   - current user email
-   - current role
-   - demo mode
-5. 若登入失敗，要顯示簡單錯誤訊息。
-6. 保持這是 demo scaffold，不要實作完整正式 token persistence。
+#### 我的預期
+希望 Roo Code 可以用多個小 commit，逐步把 dashboard 從單純 scaffold 擴充成一個可展示的 frontend demo。
 
-RBAC demo behavior:
-請至少讓 dashboard 畫面有最小差異化顯示：
-- employee: show "Employee View"
-- manager: show "Manager View"
-- admin: show "Admin View"
+#### Roo Code 實際回應
+Roo Code 後續確實透過多輪 prompt，逐步完成：
+- employee 任務切換
+- manager/admin 新增與管理 task
+- 共享統計 chips
+- demo banner
+- mock auth localStorage persistence
+- task localStorage persistence
+- reset / validation / empty states
+- README usage notes
 
-Documentation:
-請更新 PROMPT.md，補一小段說明：
-1. 為什麼這裡不用登入時手動選角色。
-2. 為什麼目前改用 demo accounts 映射角色。
-3. 這仍然屬於 demo / scaffold，不是正式 production auth。
+#### 反思
+好的 prompt 不一定是一次講很大，而是能把需求拆成明確的小階段，每一輪都要求 Roo Code 回報修改檔案與建議 commit message。這樣能讓 commit history 更清楚，也更符合工程協作。
 
-完成後請先回報：
-1. 實際新增或修改的檔案
-2. 測試方式（要輸入哪些 demo 帳號）
-3. 目前仍屬於 demo 的部分
-4. 建議的 commit message
+---
 
-不要實作：
-- Task
-- Document
-- AI pipeline
-- Notification
-- Admin dashboard
-- 真正完整的 production auth/session system
+### Prompt 5：Debug / Fix Prompt（Next.js 16）
+#### Prompt 目的
+在前端 demo 基本完成後，修正實際執行時出現的 runtime 問題，包括：
+- async `searchParams`
+- hook order error
+- `Rendered more hooks than during the previous render`
+- `localStorage is not defined`
+- hydration/client-only API 問題
 
+#### 我的預期
+Roo Code 能根據錯誤訊息修正實作方式，並保持現有功能不被破壞。
 
-## 回報問題與相關事情:
-已完成 demo-only login refinement（維持 Stage 1 範圍）：
+#### Roo Code 實際回應
+Roo Code 透過後續多個 fix 類 prompt，逐步完成：
+- 改用 `useSearchParams()` 或移除舊 `searchParams` 依賴
+- 修正 hooks 順序
+- 將 effects 移到 conditional returns 之前
+- 為 localStorage 存取加上 client-side guard
+- 將初始化讀取移到 hydration 後處理
 
-1) 新增/修改的檔案
-- Backend: [`backend/src/auth/auth.service.ts`](backend/src/auth/auth.service.ts:1) — 加入 demo 帳號映射與密碼 `demo1234`，email→role 自動判定；不符則 Unauthorized；仍保留原 Users 驗證路徑。
-- Frontend:
-  - [`frontend/src/app/login/page.tsx`](frontend/src/app/login/page.tsx:1) — 呼叫 `/api/v1/auth/login`，成功即 redirect 至 `/dashboard?email=...`，失敗顯示錯誤；不存 token。
-  - [`frontend/src/app/(protected)/layout.tsx`](frontend/src/app/(protected)/layout.tsx:1) — demo-only 放行（提醒未實作真實驗證）。
-  - [`frontend/src/app/dashboard/page.tsx`](frontend/src/app/dashboard/page.tsx:1) — 依 query 中 email 推導 role (employee/manager/admin/guest)，顯示 Current user/Role/對應 View 與 demo 提示。
-- Docs: [`PROMPT.md`](PROMPT.md:1) — 補充為何用固定 demo accounts 映射角色、仍屬 scaffold。
+#### 反思
+這部分很能反映「AI as Engineer」的協作模式。 可以根據實際錯誤設計新的 prompt，要求 Roo Code 修正問題。  
 
-2) 測試方式
-- 使用 demo 密碼 `demo1234` 與下列 email：
-  - employee@test.com → role: employee
-  - manager@test.com → role: manager
-  - admin@test.com → role: admin
-- 流程：登入頁輸入 email/password → 成功導向 `/dashboard?email=...` → Dashboard 顯示 email、role 與對應 “Employee/Manager/Admin View”。錯誤帳密會顯示錯誤訊息。
+---
 
-3) 仍為 demo 的部分
-- 無真實 session/token 持久化，僅前端 redirect；protected layout 為示意放行。
-- Backend demo login 使用 in-memory mapping，僅供展示。
-- 未涉入任何 Stage 2+ 模組。
+## 六、哪些 Prompt 最有效？
 
-4) 建議 commit message
-- `chore: add demo login flow with role mapping and dashboard view`
+### 最有效的 prompt 類型
+1. **先規劃再實作的 prompt**  
+   能先建立全局架構，避免一開始亂做。
 
-所有變更保持在 Stage 1 demo scaffold 範圍內，未實作真實 production auth/session。
+2. **明確限制階段與模組範圍的 prompt**  
+   對防止 drift 非常有效。
 
+3. **要求 Roo Code 回報修改檔案與 commit message 的 prompt**  
+   有助於建立可追蹤的開發過程。
 
-### 回覆
-確認，請先停止繼續實作，不要進入 Stage 2 或新增其他功能。
+4. **根據錯誤訊息設計的 debug prompt**  
+   能讓 Roo Code 不只是寫功能，也能做收尾與修正。
 
-目前請只做收尾確認：
-1. 再次確認 frontend 和 backend 都可正常 build
-2. 確認 demo login 測試方式是否如下：
-   - employee@test.com / demo1234
-   - manager@test.com / demo1234
-   - admin@test.com / demo1234
-3. 再次列出本輪實際修改的檔案
-4. 確認目前仍屬於 Stage 1 demo scaffold，而不是 production auth
-5. 提供最終建議 commit message
+---
 
-不要再修改任何程式碼，除非發現 build 失敗。
+## 七、哪些 Prompt 比較容易失效？
+最容易出問題的不是某一個特定 prompt，而是以下情況：
 
+- prompt 太短，只寫「繼續完成」
+- 沒有限制不要做下一階段
+- 沒有要求回報修改範圍
+- 沒有明說目前哪些東西不能碰
 
+在這些情況下，Roo Code 比較容易：
+- 自動擴張功能
+- 產出超出目前作業範圍的內容
+- 讓文件與實作不一致
 
+---
 
+## 八、Orchestration 是否真的有幫助？
+有幫助，而且幫助很明顯。
 
+如果不用 orchestration，而是直接要求 AI「寫一個完整系統」，最可能出現的問題有：
+
+1. 一次產生太多內容，難以控管  
+2. 無法保留清楚的分階段 commit  
+3. 很難同時顧到設計文件與實作  
+4. 出錯時不知道該怎麼回頭修正  
+5. 無法明確看出 prompt 設計是否有效  
+
+相反地，若使用 orchestration 後，我可以：
+- 先規劃，再實作
+- 明確限制階段
+- 逐輪檢查 Roo Code 的方向
+- 用新的 prompt 做糾偏
+- 保留清楚的 Git 歷史與文件說明
+
+---
+
+## 九、本次實作成果與完整設計的差異
+這次提交的 repo 並不是把整個系統完整做完，而是先完成一個 **frontend-only demo dashboard**。  
+目前已完成的部分包括：
+
+- demo login
+- role-aware dashboard
+- employee / manager / admin 視圖
+- mock auth localStorage persistence
+- demo task localStorage persistence
+- manager/admin 任務管理
+- employee 任務狀態切換
+- reset flow
+- validation
+- empty states
+- README usage notes
+- Next.js 16 相容修正
+
+而完整系統設計中原本規劃的以下模組，目前仍屬於後續擴充方向：
+- 真正的 task backend CRUD
+- PostgreSQL 持久化
+- document processing
+- AI summarize / tagging pipeline
+- notifications
+- admin audit dashboard
+- worker / queue pipeline 完整落地
+
+---
 
 ## Final Reflection
 這次作業中，我發現 prompt 設計比直接要求「幫我寫系統」更重要。  
