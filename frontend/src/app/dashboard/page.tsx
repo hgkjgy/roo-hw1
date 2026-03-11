@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearDemoUser, getDemoUsersList, readDemoUser } from "@/lib/demo-auth";
-import { DemoTask, DemoTaskStatus, getInitialDemoTasks, saveDemoTasks } from "@/lib/demo-tasks";
+import { clearDemoTasks, DemoTask, DemoTaskStatus, getInitialDemoTasks, saveDemoTasks } from "@/lib/demo-tasks";
 
 type Role = "admin" | "manager" | "employee" | "guest";
 
@@ -85,9 +85,13 @@ function TaskRow({ task }: { task: Task }) {
 function TaskList({ tasks }: { tasks: Task[] }) {
   return (
     <div className="space-y-2">
-      {tasks.map((task) => (
-        <TaskRow key={task.id} task={task} />
-      ))}
+      {tasks.length === 0 ? (
+        <div className="rounded border border-dashed px-3 py-6 text-center text-sm text-gray-500">
+          No tasks available. Add a task to get started.
+        </div>
+      ) : (
+        tasks.map((task) => <TaskRow key={task.id} task={task} />)
+      )}
     </div>
   );
 }
@@ -113,37 +117,43 @@ function EmployeeTasks({ tasks, onChange }: { tasks: Task[]; onChange: (tasks: T
       </div>
 
       <div className="space-y-2">
-        {myTasks.map((task) => (
-          <div key={task.id} className="rounded border p-3 text-sm space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{task.title}</p>
-                <p className="text-xs text-gray-500">Priority: {task.priority}</p>
-              </div>
-              <StatusPill status={task.status} />
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <button
-                className={`rounded border px-2 py-1 ${task.status === "todo" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
-                onClick={() => updateStatus(task.id, "todo")}
-              >
-                Mark To do
-              </button>
-              <button
-                className={`rounded border px-2 py-1 ${task.status === "in_progress" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
-                onClick={() => updateStatus(task.id, "in_progress")}
-              >
-                Mark In progress
-              </button>
-              <button
-                className={`rounded border px-2 py-1 ${task.status === "done" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
-                onClick={() => updateStatus(task.id, "done")}
-              >
-                Mark Done
-              </button>
-            </div>
+        {myTasks.length === 0 ? (
+          <div className="rounded border border-dashed px-3 py-6 text-center text-sm text-gray-500">
+            No tasks assigned to you yet.
           </div>
-        ))}
+        ) : (
+          myTasks.map((task) => (
+            <div key={task.id} className="rounded border p-3 text-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-xs text-gray-500">Priority: {task.priority}</p>
+                </div>
+                <StatusPill status={task.status} />
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <button
+                  className={`rounded border px-2 py-1 ${task.status === "todo" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
+                  onClick={() => updateStatus(task.id, "todo")}
+                >
+                  Mark To do
+                </button>
+                <button
+                  className={`rounded border px-2 py-1 ${task.status === "in_progress" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
+                  onClick={() => updateStatus(task.id, "in_progress")}
+                >
+                  Mark In progress
+                </button>
+                <button
+                  className={`rounded border px-2 py-1 ${task.status === "done" ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-700"}`}
+                  onClick={() => updateStatus(task.id, "done")}
+                >
+                  Mark Done
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -161,16 +171,21 @@ function ManagerAdminTasks({
   const [title, setTitle] = useState("");
   const [assignee, setAssignee] = useState("employee@test.com");
   const [status, setStatus] = useState<TaskStatus>("todo");
+  const [formError, setFormError] = useState<string | null>(null);
 
   const updateStatus = (id: string, newStatus: TaskStatus) => {
     onChange(tasks.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
   };
 
   const addTask = () => {
-    if (!title.trim()) return;
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setFormError("Title is required.");
+      return;
+    }
     const newTask: Task = {
       id: `t-${Date.now()}`,
-      title: title.trim(),
+      title: trimmed,
       assignee,
       status,
       priority: "medium",
@@ -178,6 +193,7 @@ function ManagerAdminTasks({
     onChange([newTask, ...tasks]);
     setTitle("");
     setStatus("todo");
+    setFormError(null);
   };
 
   return (
@@ -222,6 +238,7 @@ function ManagerAdminTasks({
             <option value="done">Done</option>
           </select>
         </div>
+        {formError && <p className="text-xs text-red-600">{formError}</p>}
         <div className="flex justify-end">
           <button
             className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
@@ -234,34 +251,40 @@ function ManagerAdminTasks({
       </div>
 
       <div className="space-y-2">
-        {tasks.map((task) => (
-          <div key={task.id} className="rounded border p-3 text-sm space-y-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-medium">{task.title}</p>
-                <p className="text-xs text-gray-500">Assignee: {task.assignee}</p>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="rounded bg-slate-100 px-2 py-1">{task.priority}</span>
-                <StatusPill status={task.status} />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <label className="flex items-center gap-1">
-                <span className="text-[11px] text-gray-500">Status</span>
-                <select
-                  className="rounded border px-2 py-1 text-xs"
-                  value={task.status}
-                  onChange={(e) => updateStatus(task.id, e.target.value as TaskStatus)}
-                >
-                  <option value="todo">To do</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="done">Done</option>
-                </select>
-              </label>
-            </div>
+        {tasks.length === 0 ? (
+          <div className="rounded border border-dashed px-3 py-6 text-center text-sm text-gray-500">
+            No tasks yet. Add a demo task to populate the list.
           </div>
-        ))}
+        ) : (
+          tasks.map((task) => (
+            <div key={task.id} className="rounded border p-3 text-sm space-y-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-xs text-gray-500">Assignee: {task.assignee}</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="rounded bg-slate-100 px-2 py-1">{task.priority}</span>
+                  <StatusPill status={task.status} />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <label className="flex items-center gap-1">
+                  <span className="text-[11px] text-gray-500">Status</span>
+                  <select
+                    className="rounded border px-2 py-1 text-xs"
+                    value={task.status}
+                    onChange={(e) => updateStatus(task.id, e.target.value as TaskStatus)}
+                  >
+                    <option value="todo">To do</option>
+                    <option value="in_progress">In progress</option>
+                    <option value="done">Done</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -322,6 +345,16 @@ export default function DashboardPage({
               }}
             >
               Logout
+            </button>
+            <button
+              className="rounded border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+              onClick={() => {
+                clearDemoUser();
+                clearDemoTasks();
+                router.replace("/login");
+              }}
+            >
+              Reset demo data
             </button>
           </div>
         </header>
