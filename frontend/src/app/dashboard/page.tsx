@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { clearDemoUser, getDemoUsersList, readDemoUser } from "@/lib/demo-auth";
 import { clearDemoTasks, DemoTask, DemoTaskStatus, getInitialDemoTasks, saveDemoTasks } from "@/lib/demo-tasks";
 
@@ -290,31 +290,36 @@ function ManagerAdminTasks({
   );
 }
 
-export default function DashboardPage({
-  searchParams,
-}: {
-  searchParams?: { email?: string };
-}) {
+export default function DashboardPage() {
   const router = useRouter();
-  const emailFromParams = (searchParams?.email || "").trim();
+  const searchParams = useSearchParams();
+  const emailFromParams = (searchParams?.get("email") || "").trim();
   const [authedUser, setAuthedUser] = useState<{ email: string; role: Role } | null>(null);
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // On mount, read stored user; if none, redirect to login.
   useEffect(() => {
     const stored = readDemoUser();
     if (stored) {
       setAuthedUser(stored);
-    } else if (emailFromParams) {
+      setIsHydrated(true);
+      return;
+    }
+
+    if (emailFromParams) {
       // fallback for legacy query param (non-persistent)
       setAuthedUser({ email: emailFromParams, role: deriveRole(emailFromParams) });
-    } else {
-      router.replace("/login");
+      setIsHydrated(true);
+      return;
     }
+
+    router.replace("/login");
+    setIsHydrated(true);
   }, [router, emailFromParams]);
 
-  // Guard render until we know auth state
-  if (!authedUser) {
+  // Guard render until hydration/auth resolved
+  if (!isHydrated || !authedUser) {
     return null;
   }
 
