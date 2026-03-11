@@ -7,7 +7,7 @@ import { LoginDto } from './dto/login.dto';
 const ACCESS_TOKEN_TTL_SECONDS = Number(process.env.JWT_EXPIRES_IN ?? 900);
 const REFRESH_TOKEN_TTL_SECONDS = Number(process.env.JWT_REFRESH_EXPIRES_IN ?? 604800);
 
-const DEMO_PASSWORD = 'demo123';
+const DEMO_PASSWORD = 'demo1234';
 const DEMO_USERS: Record<string, string[]> = {
   'employee@test.com': ['employee'],
   'manager@test.com': ['manager'],

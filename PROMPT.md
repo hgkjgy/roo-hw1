@@ -369,7 +369,7 @@ Demo accounts:
 - admin@test.com
 
 Demo password:
-- demo123
+- demo1234
 
 限制：
 1. 這是 demo-only behavior，不是真實正式驗證系統。
@@ -381,7 +381,7 @@ Demo password:
 
 Backend requirements:
 1. 在現有 auth/users baseline 上加入 demo login behavior。
-2. 當 email 為 employee@test.com、manager@test.com、admin@test.com，且 password 為 demo123 時，允許登入。
+2. 當 email 為 employee@test.com、manager@test.com、admin@test.com，且 password 為 demo1234 時，允許登入。
 3. 若帳號或密碼不符，回傳適當錯誤。
 4. role 對應如下：
    - employee@test.com -> employee
@@ -432,7 +432,7 @@ Documentation:
 已完成 demo-only login refinement（維持 Stage 1 範圍）：
 
 1) 新增/修改的檔案
-- Backend: [`backend/src/auth/auth.service.ts`](backend/src/auth/auth.service.ts:1) — 加入 demo 帳號映射與密碼 `demo123`，email→role 自動判定；不符則 Unauthorized；仍保留原 Users 驗證路徑。
+- Backend: [`backend/src/auth/auth.service.ts`](backend/src/auth/auth.service.ts:1) — 加入 demo 帳號映射與密碼 `demo1234`，email→role 自動判定；不符則 Unauthorized；仍保留原 Users 驗證路徑。
 - Frontend:
   - [`frontend/src/app/login/page.tsx`](frontend/src/app/login/page.tsx:1) — 呼叫 `/api/v1/auth/login`，成功即 redirect 至 `/dashboard?email=...`，失敗顯示錯誤；不存 token。
   - [`frontend/src/app/(protected)/layout.tsx`](frontend/src/app/(protected)/layout.tsx:1) — demo-only 放行（提醒未實作真實驗證）。
@@ -440,7 +440,7 @@ Documentation:
 - Docs: [`PROMPT.md`](PROMPT.md:1) — 補充為何用固定 demo accounts 映射角色、仍屬 scaffold。
 
 2) 測試方式
-- 使用 demo 密碼 `demo123` 與下列 email：
+- 使用 demo 密碼 `demo1234` 與下列 email：
   - employee@test.com → role: employee
   - manager@test.com → role: manager
   - admin@test.com → role: admin
@@ -457,6 +457,20 @@ Documentation:
 所有變更保持在 Stage 1 demo scaffold 範圍內，未實作真實 production auth/session。
 
 
+### 回覆
+確認，請先停止繼續實作，不要進入 Stage 2 或新增其他功能。
+
+目前請只做收尾確認：
+1. 再次確認 frontend 和 backend 都可正常 build
+2. 確認 demo login 測試方式是否如下：
+   - employee@test.com / demo1234
+   - manager@test.com / demo1234
+   - admin@test.com / demo1234
+3. 再次列出本輪實際修改的檔案
+4. 確認目前仍屬於 Stage 1 demo scaffold，而不是 production auth
+5. 提供最終建議 commit message
+
+不要再修改任何程式碼，除非發現 build 失敗。
 
 
 

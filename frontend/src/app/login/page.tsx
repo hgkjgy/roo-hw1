@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -10,24 +10,41 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const loginUrl = useMemo(() => "http://localhost:3001/api/v1/auth/login", []);
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
     try {
-      const resp = await fetch("/api/v1/auth/login", {
+      const resp = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
       if (!resp.ok) {
-        const msg = await resp.text();
-        throw new Error(msg || "Login failed");
+        let message = "Login failed";
+        try {
+          const maybeJson = await resp.json();
+          const msg = (maybeJson?.message as string) ?? message;
+          message = Array.isArray(maybeJson?.message) ? maybeJson.message.join(", ") : msg;
+        } catch (jsonErr) {
+          const text = await resp.text();
+          const trimmed = text.trim();
+          // Avoid dumping HTML error pages
+          if (trimmed && !trimmed.startsWith("<")) {
+            message = trimmed;
+          }
+        }
+        throw new Error(message);
       }
       // Demo-only: not persisting token, just redirect.
       router.replace("/dashboard?email=" + encodeURIComponent(email));
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      const friendly = err?.message?.startsWith("TypeError: Failed to fetch")
+        ? "Cannot reach login API. Please check backend (http://localhost:3001) is running and CORS/network are allowed."
+        : err?.message ?? "Login failed";
+      setError(friendly);
     } finally {
       setIsSubmitting(false);
     }

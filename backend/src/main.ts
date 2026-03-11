@@ -7,6 +7,11 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  app.enableCors({
+    origin: ['http://localhost:3000'],
+    credentials: true,
+  });
+
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   await app.listen(port);
 }
