@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { clearDemoUser, getDemoUsersList, readDemoUser } from "@/lib/demo-auth";
 
 type Role = "admin" | "manager" | "employee" | "guest";
 
@@ -21,11 +22,7 @@ const DEMO_USERS: Record<string, Role> = {
   "employee@test.com": "employee",
 };
 
-const DEMO_USER_LIST = [
-  { email: "admin@test.com", role: "admin" as Role },
-  { email: "manager@test.com", role: "manager" as Role },
-  { email: "employee@test.com", role: "employee" as Role },
-];
+const DEMO_USER_LIST = getDemoUsersList();
 
 const seedTasks: Task[] = [
   { id: "t1", title: "Prepare monthly report", assignee: "manager@test.com", status: "in_progress", priority: "high" },
@@ -287,9 +284,29 @@ export default function DashboardPage({
   searchParams?: { email?: string };
 }) {
   const router = useRouter();
-  const email = (searchParams?.email || "demo@test.com").trim();
-  const role = useMemo<Role>(() => deriveRole(email), [email]);
+  const emailFromParams = (searchParams?.email || "").trim();
+  const [authedUser, setAuthedUser] = useState<{ email: string; role: Role } | null>(null);
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
+
+  // On mount, read stored user; if none, redirect to login.
+  useEffect(() => {
+    const stored = readDemoUser();
+    if (stored) {
+      setAuthedUser(stored);
+    } else if (emailFromParams) {
+      // fallback for legacy query param (non-persistent)
+      setAuthedUser({ email: emailFromParams, role: deriveRole(emailFromParams) });
+    } else {
+      router.replace("/login");
+    }
+  }, [router, emailFromParams]);
+
+  // Guard render until we know auth state
+  if (!authedUser) {
+    return null;
+  }
+
+  const { email, role } = authedUser;
 
   return (
     <main className="min-h-screen bg-gray-50 flex justify-center px-4 py-10">
@@ -305,7 +322,10 @@ export default function DashboardPage({
             <span className="rounded-full bg-amber-100 text-amber-800 px-3 py-1">Demo mode</span>
             <button
               className="rounded border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              onClick={() => router.replace("/login")}
+              onClick={() => {
+                clearDemoUser();
+                router.replace("/login");
+              }}
             >
               Logout
             </button>

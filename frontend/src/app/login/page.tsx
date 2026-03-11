@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getDemoUserByEmail, saveDemoUser, readDemoUser } from "@/lib/demo-auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,11 +13,24 @@ export default function LoginPage() {
 
   const loginUrl = useMemo(() => "http://localhost:3001/api/v1/auth/login", []);
 
+  // If already logged in (demo), redirect to dashboard
+  useMemo(() => {
+    const existing = readDemoUser();
+    if (existing) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
     try {
+      const demoUser = getDemoUserByEmail(email);
+      if (!demoUser) {
+        throw new Error("Demo account not found");
+      }
+
       const resp = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,15 +45,16 @@ export default function LoginPage() {
         } catch (jsonErr) {
           const text = await resp.text();
           const trimmed = text.trim();
-          // Avoid dumping HTML error pages
           if (trimmed && !trimmed.startsWith("<")) {
             message = trimmed;
           }
         }
         throw new Error(message);
       }
-      // Demo-only: not persisting token, just redirect.
-      router.replace("/dashboard?email=" + encodeURIComponent(email));
+
+      // Demo-only: persist mock auth user locally; tokens still not stored.
+      saveDemoUser(demoUser);
+      router.replace("/dashboard");
     } catch (err: any) {
       const friendly = err?.message?.startsWith("TypeError: Failed to fetch")
         ? "Cannot reach login API. Please check backend (http://localhost:3001) is running and CORS/network are allowed."
