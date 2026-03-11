@@ -3,18 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearDemoUser, getDemoUsersList, readDemoUser } from "@/lib/demo-auth";
+import { DemoTask, DemoTaskStatus, getInitialDemoTasks, saveDemoTasks } from "@/lib/demo-tasks";
 
 type Role = "admin" | "manager" | "employee" | "guest";
 
-type TaskStatus = "todo" | "in_progress" | "done";
-
-type Task = {
-  id: string;
-  title: string;
-  assignee: string;
-  status: TaskStatus;
-  priority: "low" | "medium" | "high";
-};
+type TaskStatus = DemoTaskStatus;
+type Task = DemoTask;
 
 const DEMO_USERS: Record<string, Role> = {
   "admin@test.com": "admin",
@@ -24,12 +18,7 @@ const DEMO_USERS: Record<string, Role> = {
 
 const DEMO_USER_LIST = getDemoUsersList();
 
-const seedTasks: Task[] = [
-  { id: "t1", title: "Prepare monthly report", assignee: "manager@test.com", status: "in_progress", priority: "high" },
-  { id: "t2", title: "Update client deck", assignee: "employee@test.com", status: "todo", priority: "medium" },
-  { id: "t3", title: "Data cleanup", assignee: "employee@test.com", status: "done", priority: "low" },
-  { id: "t4", title: "Security checklist", assignee: "admin@test.com", status: "in_progress", priority: "high" },
-];
+const seedTasks: Task[] = getInitialDemoTasks();
 
 function deriveRole(email: string): Role {
   const found = DEMO_USERS[email.toLowerCase()];
@@ -307,6 +296,11 @@ export default function DashboardPage({
   }
 
   const { email, role } = authedUser;
+
+  // Persist tasks to localStorage whenever they change
+  useEffect(() => {
+    saveDemoTasks(tasks);
+  }, [tasks]);
 
   return (
     <main className="min-h-screen bg-gray-50 flex justify-center px-4 py-10">
