@@ -41,6 +41,7 @@ function normalizeTasks(tasks: any): DemoTask[] | null {
 }
 
 export function readDemoTasks(): DemoTask[] | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -53,6 +54,7 @@ export function readDemoTasks(): DemoTask[] | null {
 }
 
 export function saveDemoTasks(tasks: DemoTask[]) {
+  if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   } catch (e) {
@@ -61,6 +63,7 @@ export function saveDemoTasks(tasks: DemoTask[]) {
 }
 
 export function clearDemoTasks() {
+  if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (e) {

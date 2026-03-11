@@ -318,6 +318,13 @@ export default function DashboardPage() {
     setIsHydrated(true);
   }, [router, emailFromParams]);
 
+  // After hydration, refresh tasks from storage to avoid SSR localStorage access
+  useEffect(() => {
+    if (!isHydrated) return;
+    const storedTasks = getInitialDemoTasks();
+    setTasks(storedTasks);
+  }, [isHydrated]);
+
   // Guard render until hydration/auth resolved
   if (!isHydrated || !authedUser) {
     return null;
@@ -327,8 +334,9 @@ export default function DashboardPage() {
 
   // Persist tasks to localStorage whenever they change
   useEffect(() => {
+    if (!isHydrated) return;
     saveDemoTasks(tasks);
-  }, [tasks]);
+  }, [tasks, isHydrated]);
 
   return (
     <main className="min-h-screen bg-gray-50 flex justify-center px-4 py-10">

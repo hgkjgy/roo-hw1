@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDemoUserByEmail, saveDemoUser, readDemoUser } from "@/lib/demo-auth";
 
@@ -13,8 +13,8 @@ export default function LoginPage() {
 
   const loginUrl = useMemo(() => "http://localhost:3001/api/v1/auth/login", []);
 
-  // If already logged in (demo), redirect to dashboard
-  useMemo(() => {
+  // If already logged in (demo), redirect to dashboard (client-only)
+  useEffect(() => {
     const existing = readDemoUser();
     if (existing) {
       router.replace("/dashboard");

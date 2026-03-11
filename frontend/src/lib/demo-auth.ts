@@ -26,7 +26,7 @@ export function getDemoUserByEmail(email: string): DemoUser | null {
 }
 
 export function saveDemoUser(user: DemoUser) {
-  if (!user) return;
+  if (typeof window === "undefined" || !user) return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
   } catch (e) {
@@ -35,6 +35,7 @@ export function saveDemoUser(user: DemoUser) {
 }
 
 export function readDemoUser(): DemoUser | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -50,6 +51,7 @@ export function readDemoUser(): DemoUser | null {
 }
 
 export function clearDemoUser() {
+  if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (e) {
